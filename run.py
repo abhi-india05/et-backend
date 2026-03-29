@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -17,7 +18,6 @@ from typing import NoReturn
 
 
 BACKEND_DIR = Path(__file__).resolve().parent
-REPO_ROOT = BACKEND_DIR.parent
 
 
 def _die(msg: str, code: int = 2) -> NoReturn:
@@ -36,7 +36,7 @@ def _install_backend_requirements() -> None:
     req = BACKEND_DIR / "requirements.txt"
     if not req.exists():
         _die(f"missing requirements file: {req}")
-    _run([sys.executable, "-m", "pip", "install", "-r", str(req)], cwd=REPO_ROOT)
+    _run([sys.executable, "-m", "pip", "install", "-r", str(req)], cwd=BACKEND_DIR)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -57,6 +57,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 
 def main(argv: list[str]) -> int:
+    if os.getenv("VERCEL") or os.getenv("VERCEL_ENV") or os.getenv("NOW_REGION"):
+        print("Detected Vercel environment; skipping local dev server startup.")
+        return 0
+
     args = parse_args(argv)
 
     if args.install:
@@ -71,7 +75,7 @@ def main(argv: list[str]) -> int:
         sys.executable,
         "-m",
         "uvicorn",
-        "backend.main:app",
+        "main:app",
         "--host",
         args.host,
         "--port",
@@ -82,7 +86,7 @@ def main(argv: list[str]) -> int:
 
     print(f"backend: http://{args.host}:{args.port}")
     print(f"backend docs: http://{args.host}:{args.port}/docs")
-    _run(cmd, cwd=REPO_ROOT)
+    _run(cmd, cwd=BACKEND_DIR)
     return 0
 
 
