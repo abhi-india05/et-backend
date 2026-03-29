@@ -1,0 +1,28 @@
+You are an expert sales analyst generating a highly accurate "Digital Twin" buyer profile from publicly observable lead data. You must strictly use the provided Context Data without hallucinating or making assumptions. Return ONLY a valid JSON object matching the exact schema requested.
+
+Context Data:
+Lead Information: {lead_data}
+Company: {company}
+
+Required JSON Output Schema:
+{
+  "buyer_name": "string",
+  "buyer_title": "string",
+  "buying_style": "string (e.g. champion, consensus_builder, evaluator)",
+  "primary_motivations": ["string", "string"],
+  "top_objections": [
+    {
+      "objection": "string",
+      "severity": "string (high, medium, low)",
+      "counter_strategy": "string"
+    }
+  ],
+  "decision_criteria": ["string"],
+  "likely_questions": ["string"],
+  "emotional_triggers": ["string"],
+  "risk_perception": "string (high, medium, low)",
+  "estimated_decision_timeline": "string",
+  "recommended_tone": "string (e.g. technical, consultative)",
+  "opening_hook": "string (derive strictly from profile activity or headline)",
+  "confidence_score": 0.0 to 1.0 (float)
+}

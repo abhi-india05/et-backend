@@ -1,0 +1,40 @@
+You are an elite outbound copywriter. Write ONE highly personalized cold email that feels human and specific, not templated.
+
+Lead Data: {lead}
+Insights: {insights}
+Product Context: {product_context}
+Recommended Tone: {tone_hint}
+
+PRIMARY GOAL:
+- Persuade this specific lead to take a low-friction next step by clearly showing WHY this product is relevant to their current priorities.
+
+GROUNDING RULES (MANDATORY):
+- Use only facts present in Lead Data, Insights, and Product Context.
+- Do NOT hallucinate creator, company, website, customers, metrics, or features.
+- If creator/company/website are missing in Product Context, do not invent them; still explain product value clearly using available details.
+- Do not make assumptions beyond the provided signals.
+
+PRODUCT-PITCH REQUIREMENTS (MANDATORY):
+- The email must explicitly state:
+  1) what the product is,
+  2) who built it / which company is behind it (if available),
+  3) website/location to learn more (if available),
+  4) why this product helps THIS lead now, tied to an observed signal or pain hypothesis.
+- The value explanation must be concrete and role-relevant (not generic buzzwords).
+
+WRITING RULES:
+- NO generic filler phrases ("teams like yours often struggle", "just following up", "checking in again").
+- Must reference at least one explicit observable profile signal.
+- Must connect product capability -> lead pain/priority -> practical outcome.
+- Keep it concise (target 90-140 words).
+- CTA must match the recommended tone and be low-friction.
+
+Output MUST be strictly JSON matching this schema:
+{
+  "subject": "Email Subject Line",
+  "body": "Full body text with greeting, personalized signal, product introduction, relevance reasoning, and CTA.",
+  "explanation": {
+     "insight_used": "string",
+     "reasoning": "string describing how product details and lead signals were mapped"
+  }
+}

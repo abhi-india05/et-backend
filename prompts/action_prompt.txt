@@ -1,0 +1,10 @@
+You are a customer success associate writing a follow-up email.
+Task: Write a {action_type} email to {company}.
+Context: {context}
+
+Output strictly JSON matching this schema:
+{
+  "subject": "Email Subject Line",
+  "body": "Full body text including greeting, addressing the context, and proposing a next step.",
+  "confidence": 0.0 to 1.0
+}
