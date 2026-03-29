@@ -1,0 +1,22 @@
+[
+  { "account_id": "acc_001", "feature_adoption": 0.35, "api_calls_trend": -0.4, "support_escalations": 3, "contract_renewal_days": 45, "expansion_revenue": 0 },
+  { "account_id": "acc_002", "feature_adoption": 0.78, "api_calls_trend": 0.2, "support_escalations": 0, "contract_renewal_days": 180, "expansion_revenue": 25000 },
+  { "account_id": "acc_003", "feature_adoption": 0.18, "api_calls_trend": -0.7, "support_escalations": 8, "contract_renewal_days": 20, "expansion_revenue": 0 },
+  { "account_id": "acc_004", "feature_adoption": 0.90, "api_calls_trend": 0.5, "support_escalations": 0, "contract_renewal_days": 365, "expansion_revenue": 50000 },
+  { "account_id": "acc_005", "feature_adoption": 0.12, "api_calls_trend": -0.85, "support_escalations": 12, "contract_renewal_days": 15, "expansion_revenue": 0 },
+  { "account_id": "acc_006", "feature_adoption": 0.55, "api_calls_trend": 0.05, "support_escalations": 2, "contract_renewal_days": 90, "expansion_revenue": 5000 },
+  { "account_id": "acc_007", "feature_adoption": 0.65, "api_calls_trend": 0.15, "support_escalations": 1, "contract_renewal_days": 120, "expansion_revenue": 8000 },
+  { "account_id": "acc_008", "feature_adoption": 0.08, "api_calls_trend": -0.92, "support_escalations": 18, "contract_renewal_days": 10, "expansion_revenue": 0 },
+  { "account_id": "acc_009", "feature_adoption": 0.72, "api_calls_trend": 0.3, "support_escalations": 1, "contract_renewal_days": 200, "expansion_revenue": 30000 },
+  { "account_id": "acc_010", "feature_adoption": 0.05, "api_calls_trend": -0.95, "support_escalations": 20, "contract_renewal_days": 0, "expansion_revenue": 0 },
+  { "account_id": "acc_011", "feature_adoption": 0.60, "api_calls_trend": 0.1, "support_escalations": 3, "contract_renewal_days": 150, "expansion_revenue": 10000 },
+  { "account_id": "acc_012", "feature_adoption": 0.85, "api_calls_trend": 0.45, "support_escalations": 0, "contract_renewal_days": 300, "expansion_revenue": 15000 },
+  { "account_id": "acc_013", "feature_adoption": 0.10, "api_calls_trend": -0.80, "support_escalations": 15, "contract_renewal_days": 8, "expansion_revenue": 0 },
+  { "account_id": "acc_014", "feature_adoption": 0.70, "api_calls_trend": 0.25, "support_escalations": 1, "contract_renewal_days": 220, "expansion_revenue": 40000 },
+  { "account_id": "acc_015", "feature_adoption": 0.92, "api_calls_trend": 0.6, "support_escalations": 0, "contract_renewal_days": 400, "expansion_revenue": 20000 },
+  { "account_id": "acc_016", "feature_adoption": 0.20, "api_calls_trend": -0.65, "support_escalations": 10, "contract_renewal_days": 25, "expansion_revenue": 0 },
+  { "account_id": "acc_017", "feature_adoption": 0.75, "api_calls_trend": 0.2, "support_escalations": 2, "contract_renewal_days": 175, "expansion_revenue": 60000 },
+  { "account_id": "acc_018", "feature_adoption": 0.28, "api_calls_trend": -0.5, "support_escalations": 7, "contract_renewal_days": 30, "expansion_revenue": 0 },
+  { "account_id": "acc_019", "feature_adoption": 0.52, "api_calls_trend": 0.08, "support_escalations": 4, "contract_renewal_days": 100, "expansion_revenue": 3000 },
+  { "account_id": "acc_020", "feature_adoption": 0.06, "api_calls_trend": -0.90, "support_escalations": 22, "contract_renewal_days": 5, "expansion_revenue": 0 }
+]

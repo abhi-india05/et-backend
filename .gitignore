@@ -87,7 +87,6 @@ Thumbs.db
 *.bak
 .venv
 
-data/
 ../__pycache__
 
 tests
