@@ -2,7 +2,7 @@
 
 Usage:
   python run.py
-  python run.py --host 0.0.0.0 --port 8000
+    python run.py --host 0.0.0.0 --port $PORT
   python run.py --no-reload
   python run.py --install
 """
@@ -41,8 +41,13 @@ def _install_backend_requirements() -> None:
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run only the backend API server.")
-    parser.add_argument("--host", default="127.0.0.1", help="backend host (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8000, help="backend port (default: 8000)")
+    parser.add_argument("--host", default="0.0.0.0", help="backend host (default: 0.0.0.0)")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("PORT", 8000)),
+        help="backend port (default: PORT env var or 8000)",
+    )
     parser.add_argument(
         "--no-reload",
         action="store_true",
