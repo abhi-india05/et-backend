@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import List, Optional
 from urllib.parse import urlparse
 
@@ -192,6 +193,16 @@ class Settings(BaseSettings):
         return path or "revops_ai"
 
     @property
+    def is_running_on_vercel(self) -> bool:
+        return bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV") or os.getenv("NOW_REGION"))
+
+    @property
+    def is_localhost_mongo_uri(self) -> bool:
+        parsed = urlparse(self.mongodb_uri)
+        host = (parsed.hostname or "").strip().lower()
+        return host in {"", "localhost", "127.0.0.1", "::1"}
+
+    @property
     def cors_origins_list(self) -> list[str]:
         raw = (self.cors_origins or "").strip()
         if not raw:
@@ -283,6 +294,10 @@ class Settings(BaseSettings):
         problems: list[str] = []
         if not self.mongodb_uri.strip():
             problems.append("MONGODB_URI must be configured.")
+        if self.is_running_on_vercel and self.is_localhost_mongo_uri:
+            problems.append(
+                "MONGODB_URI points to localhost in a Vercel runtime. Set MONGODB_URI to your cloud MongoDB URI (for example, MongoDB Atlas)."
+            )
         if self.auth_cookie_samesite == "none" and not self.resolved_auth_cookie_secure:
             problems.append("AUTH_COOKIE_SECURE must be true when AUTH_COOKIE_SAMESITE is set to none.")
         if self.auth_enabled and self.is_production:

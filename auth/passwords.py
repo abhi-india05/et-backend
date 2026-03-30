@@ -2,11 +2,21 @@
 
 import re
 
+import bcrypt as _bcrypt
+
+if not hasattr(_bcrypt, "__about__"):
+    # Passlib 1.7.x expects bcrypt.__about__.__version__, but newer bcrypt
+    # exposes __version__ directly.
+    class _BcryptAbout:
+        __version__ = getattr(_bcrypt, "__version__", "unknown")
+
+    _bcrypt.__about__ = _BcryptAbout()  # type: ignore[attr-defined]
+
 from passlib.context import CryptContext
 
 from backend.config.settings import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
 
 
 class PasswordValidationError(ValueError):
@@ -35,4 +45,7 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    try:
+        return pwd_context.verify(password, password_hash)
+    except (TypeError, ValueError):
+        return False
