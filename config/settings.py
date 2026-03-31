@@ -48,15 +48,8 @@ class Settings(BaseSettings):
         alias="MONGO_SOCKET_TIMEOUT_MS",
     )
 
-    mail_username: Optional[str] = Field(default=None, alias="MAIL_USERNAME")
-    mail_password: Optional[str] = Field(default=None, alias="MAIL_PASSWORD")
-    mail_from: Optional[str] = Field(default=None, alias="MAIL_FROM")
-    mail_server: str = Field(default="smtp.gmail.com", alias="MAIL_SERVER")
-    mail_port: int = Field(default=587, ge=1, le=65535, alias="MAIL_PORT")
-    mail_tls: bool = Field(default=True, alias="MAIL_TLS")
-    mail_ssl: bool = Field(default=False, alias="MAIL_SSL")
-    sendgrid_api_key: str = Field(default="mock_key", alias="SENDGRID_API_KEY")
-
+    sendgrid_api_key: str = Field(default="", alias="SENDGRID_API_KEY")
+    sender_email: Optional[str] = Field(default=None, alias="SENDER_EMAIL")
     environment: str = Field(default="development", alias="ENVIRONMENT")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     cors_origins: str = Field(
@@ -222,6 +215,22 @@ class Settings(BaseSettings):
         return regex or r"^https://.*\.vercel\.app$"
 
     @property
+    def has_sendgrid_credentials(self) -> bool:
+        api_key = (self.sendgrid_api_key or "").strip()
+        sender = (self.sender_email or "").strip()
+        if not (api_key and sender):
+            return False
+        placeholders = ("your_", "example.com", "changeme", "dummy", "placeholder")
+        joined = " ".join([api_key, sender]).lower()
+        return not any(marker in joined for marker in placeholders)
+
+    @property
+    def email_transport(self) -> str:
+        if self.has_sendgrid_credentials:
+            return "sendgrid"
+        return "mock"
+
+    @property
     def gemini_api_key_list(self) -> List[str]:
         keys: List[str] = []
         raw = (self.gemini_api_keys or "").strip()
@@ -270,11 +279,7 @@ class Settings(BaseSettings):
 
     @property
     def is_mock_email(self) -> bool:
-        if not (self.mail_username and self.mail_password and self.mail_from):
-            return True
-        placeholders = ("your_", "example.com", "changeme", "dummy", "placeholder")
-        joined = " ".join([self.mail_username, self.mail_password, self.mail_from]).lower()
-        return any(marker in joined for marker in placeholders)
+        return not self.has_sendgrid_credentials
 
     @property
     def resolved_auth_cookie_secure(self) -> bool:
@@ -317,6 +322,8 @@ class Settings(BaseSettings):
                 problems.append("CORS_ORIGINS or CORS_ORIGIN_REGEX must be configured in production.")
             if not self.resolved_auth_cookie_secure:
                 problems.append("AUTH_COOKIE_SECURE must resolve to true in production.")
+            if not self.has_sendgrid_credentials:
+                problems.append("SENDGRID_API_KEY and SENDER_EMAIL must be configured in production for SendGrid email.")
         if problems:
             raise RuntimeError("Invalid configuration:\n- " + "\n- ".join(problems))
 

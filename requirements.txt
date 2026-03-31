@@ -12,7 +12,7 @@ numpy
 scikit-learn
 python-jose[cryptography]
 passlib[bcrypt]
-bcrypt<5
+sendgrid
 tenacity
 structlog
 rich

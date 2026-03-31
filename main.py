@@ -336,7 +336,7 @@ async def health_check() -> Dict[str, Any]:
         "environment": settings.environment,
         "timestamp": now_iso(),
         "gemini_configured": settings.has_gemini_key,
-        "email_mode": "live" if not settings.is_mock_email else "mock",
+        "email_mode": settings.email_transport,
         "vector_store": get_vector_store().stats(),
         "email_stats": email_stats,
         "database": database,

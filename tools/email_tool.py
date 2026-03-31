@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import html
-import smtplib
-import ssl
-from email.message import EmailMessage
-from email.utils import formataddr, make_msgid
 from typing import Any, Dict, List, Optional
 
 from pymongo.collection import Collection
 
 from backend.config.settings import settings
+from backend.email_service import send_email as sendgrid_send_email
 from backend.db.mongo import get_sync_database
 from backend.utils.helpers import generate_id, now_iso
 from backend.utils.logger import get_logger
@@ -23,17 +20,15 @@ def _get_emails_col() -> Collection:
 
 class EmailClient:
     def __init__(self):
-        self.is_mock = settings.is_mock_email
+        self.transport = settings.email_transport
+        self.is_mock = self.transport == "mock"
         if self.is_mock:
             logger.info("Email client initialized (mock mode)")
             return
 
         logger.info(
-            "SMTP email client initialized (live mode)",
-            server=settings.mail_server,
-            port=settings.mail_port,
-            tls=settings.mail_tls,
-            ssl=settings.mail_ssl,
+            "SendGrid email client initialized (live mode)",
+            sender_email=settings.sender_email,
         )
 
     def _build_html_fallback(self, body_text: str) -> str:
@@ -41,31 +36,26 @@ class EmailClient:
         escaped = escaped.replace("\r\n", "\n").replace("\r", "\n")
         return "<p>" + escaped.replace("\n", "<br>") + "</p>"
 
-    def _send_via_smtp(self, message: EmailMessage) -> None:
-        if not settings.mail_username or not settings.mail_password:
-            raise RuntimeError("MAIL_USERNAME and MAIL_PASSWORD must be set for live email")
-
-        context = ssl.create_default_context()
-
-        if settings.mail_ssl:
-            with smtplib.SMTP_SSL(
-                settings.mail_server,
-                settings.mail_port,
-                context=context,
-                timeout=30,
-            ) as smtp:
-                smtp.ehlo()
-                smtp.login(settings.mail_username, settings.mail_password)
-                smtp.send_message(message)
-                return
-
-        with smtplib.SMTP(settings.mail_server, settings.mail_port, timeout=30) as smtp:
-            smtp.ehlo()
-            if settings.mail_tls:
-                smtp.starttls(context=context)
-                smtp.ehlo()
-            smtp.login(settings.mail_username, settings.mail_password)
-            smtp.send_message(message)
+    def _send_via_sendgrid(
+        self,
+        *,
+        to_email: str,
+        to_name: str,
+        subject: str,
+        body_text: str,
+        body_html: str,
+        from_email: Optional[str],
+        from_name: str,
+    ) -> Dict[str, Any]:
+        return sendgrid_send_email(
+            to_email=to_email,
+            to_name=to_name or None,
+            subject=subject,
+            content=body_text or "",
+            html_content=body_html or None,
+            from_email=from_email,
+            from_name=from_name,
+        )
 
     def send_email(
         self,
@@ -75,20 +65,22 @@ class EmailClient:
         body_text: str,
         user_id: str,
         body_html: Optional[str] = None,
-        from_email: str = "sales@revops-ai.com",
+        from_email: Optional[str] = None,
         from_name: str = "RevOps AI",
         sequence_id: Optional[str] = None,
         sequence_step: int = 1,
     ) -> Dict[str, Any]:
         if not user_id:
             raise ValueError("user_id is required")
-            
+
+        effective_from_email = (from_email or settings.sender_email or "").strip() or "sales@revops-ai.com"
+
         email_record = {
             "user_id": user_id,
             "email_id": generate_id("email"),
             "to_email": to_email,
             "to_name": to_name,
-            "from_email": from_email,
+            "from_email": effective_from_email,
             "from_name": from_name,
             "subject": subject,
             "body_text": body_text,
@@ -97,10 +89,8 @@ class EmailClient:
             "sequence_step": sequence_step,
             "sent_at": now_iso(),
             "status": "pending",
+            "transport": self.transport,
         }
-
-        if settings.mail_from:
-            email_record["from_email"] = settings.mail_from
 
         if self.is_mock:
             email_record["status"] = "sent_mock"
@@ -115,21 +105,26 @@ class EmailClient:
             }
 
         try:
-            msg = EmailMessage()
-            msg["Subject"] = subject
-            msg["From"] = formataddr((from_name, email_record["from_email"]))
-            msg["To"] = formataddr((to_name, to_email)) if to_name else to_email
-            msg["Message-ID"] = make_msgid(domain=(settings.mail_server or "localhost"))
-
-            msg.set_content(body_text or "")
-            msg.add_alternative(email_record["body_html"], subtype="html")
-
-            self._send_via_smtp(msg)
+            send_result = self._send_via_sendgrid(
+                to_email=to_email,
+                to_name=to_name,
+                subject=subject,
+                body_text=body_text,
+                body_html=email_record["body_html"],
+                from_email=effective_from_email,
+                from_name=from_name,
+            )
 
             email_record["status"] = "sent"
+            email_record["provider_response_code"] = send_result.get("code")
             _get_emails_col().insert_one(email_record.copy())
-            logger.info("Email sent via SMTP", to=to_email, user_id=user_id)
-            return {"success": True, "email_id": email_record["email_id"], "status": "sent"}
+            logger.info("Email sent", to=to_email, user_id=user_id, transport=self.transport)
+            return {
+                "success": True,
+                "email_id": email_record["email_id"],
+                "status": "sent",
+                "code": send_result.get("code"),
+            }
         except Exception as e:
             email_record["status"] = "failed"
             email_record["error"] = str(e)
@@ -163,7 +158,7 @@ class EmailClient:
                 subject=email.get("subject", f"Follow-up #{i}"),
                 body_text=email.get("body", ""),
                 user_id=user_id,
-                from_email=email.get("from_email", "sales@revops-ai.com"),
+                from_email=email.get("from_email"),
                 from_name=email.get("from_name", "RevOps AI"),
                 sequence_id=sequence_id,
                 sequence_step=i,
