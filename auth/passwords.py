@@ -16,7 +16,7 @@ from passlib.context import CryptContext
 
 from backend.config.settings import settings
 
-pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], default="bcrypt_sha256", deprecated="auto")
 
 
 class PasswordValidationError(ValueError):

@@ -57,6 +57,9 @@ def _client_ip(request: Request) -> str:
 async def _seed_admin_user(user_repo: UserRepository) -> None:
     if not settings.auth_enabled:
         return
+    existing_admin = await user_repo.get_by_username(settings.auth_username)
+    if existing_admin:
+        return
     admin_password_hash = hash_password(settings.auth_password)
     await user_repo.ensure_admin_user(username=settings.auth_username, password_hash=admin_password_hash)
 
@@ -299,6 +302,16 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 # ---------------------------------------------------------------------------
 # Health check (un-prefixed so load balancers can hit /health directly)
 # ---------------------------------------------------------------------------
+
+
+@app.get("/")
+async def root() -> Dict[str, Any]:
+    return {
+        "status": "ok",
+        "service": "RevOps AI backend",
+        "health": "/health",
+        "docs": "/docs",
+    }
 
 @app.get("/health")
 async def health_check() -> Dict[str, Any]:
