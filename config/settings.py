@@ -219,7 +219,7 @@ class Settings(BaseSettings):
     @property
     def resolved_cors_origin_regex(self) -> Optional[str]:
         regex = (self.cors_origin_regex or "").strip()
-        return regex or None
+        return regex or r"^https://.*\.vercel\.app$"
 
     @property
     def gemini_api_key_list(self) -> List[str]:
