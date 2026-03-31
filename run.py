@@ -61,6 +61,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _should_enable_reload(no_reload: bool) -> bool:
+    if no_reload:
+        return False
+
+    # Managed runtimes usually set PORT and expect a single server process.
+    # Running with --reload starts a supervisor process and can delay readiness.
+    if os.environ.get("PORT"):
+        return False
+
+    return True
+
+
 def main(argv: list[str]) -> int:
     if os.getenv("VERCEL") or os.getenv("VERCEL_ENV") or os.getenv("NOW_REGION"):
         print("Detected Vercel environment; skipping local dev server startup.")
@@ -86,7 +98,7 @@ def main(argv: list[str]) -> int:
         "--port",
         str(args.port),
     ]
-    if not args.no_reload:
+    if _should_enable_reload(args.no_reload):
         cmd.append("--reload")
 
     print(f"backend: http://{args.host}:{args.port}")

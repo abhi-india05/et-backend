@@ -77,6 +77,10 @@ logs/
 .coverage
 htmlcov/
 
+# Generated vector index artifacts
+memory/faiss_index.faiss
+memory/faiss_index_docs.pkl
+
 # OS
 .DS_Store
 Thumbs.db
