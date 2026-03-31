@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import smtplib
+import ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import formataddr
 from typing import Any, Dict, Optional
-
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Email, Mail, To
 
 from backend.config.settings import settings
 
@@ -18,27 +20,54 @@ def send_email(
     from_name: str = "RevOps AI",
     to_name: Optional[str] = None,
 ) -> Dict[str, Any]:
-    api_key = (settings.sendgrid_api_key or "").strip()
-    sender_email = (from_email or settings.sender_email or "").strip()
+    username = (settings.mail_username or "").strip()
+    password = (settings.mail_password or "").strip()
+    sender_email = (from_email or settings.resolved_mail_from or "").strip()
+    smtp_server = (settings.mail_server or "").strip()
+    smtp_port = int(settings.mail_port)
 
-    if not api_key:
-        raise RuntimeError("SENDGRID_API_KEY must be configured")
+    if not username:
+        raise RuntimeError("MAIL_USERNAME must be configured")
+    if not password:
+        raise RuntimeError("MAIL_PASSWORD must be configured")
     if not sender_email:
-        raise RuntimeError("SENDER_EMAIL must be configured")
+        raise RuntimeError("MAIL_FROM (or SENDER_EMAIL) must be configured")
+    if not smtp_server:
+        raise RuntimeError("MAIL_SERVER must be configured")
 
-    message_kwargs: Dict[str, Any] = {
-        "from_email": Email(sender_email, from_name),
-        "to_emails": To(to_email, to_name) if to_name else to_email,
-        "subject": subject,
-        "plain_text_content": content or "",
-    }
     if html_content:
-        message_kwargs["html_content"] = html_content
+        message: MIMEText | MIMEMultipart = MIMEMultipart("alternative")
+        message.attach(MIMEText(content or "", "plain", "utf-8"))
+        message.attach(MIMEText(html_content, "html", "utf-8"))
+    else:
+        message = MIMEText(content or "", "plain", "utf-8")
 
-    message = Mail(**message_kwargs)
+    message["Subject"] = subject
+    message["From"] = formataddr((from_name, sender_email))
+    message["To"] = formataddr((to_name, to_email)) if to_name else to_email
 
-    response = SendGridAPIClient(api_key).send(message)
+    if settings.mail_ssl:
+        smtp_client: smtplib.SMTP | smtplib.SMTP_SSL = smtplib.SMTP_SSL(
+            smtp_server,
+            smtp_port,
+            timeout=settings.mail_timeout_seconds,
+        )
+    else:
+        smtp_client = smtplib.SMTP(
+            smtp_server,
+            smtp_port,
+            timeout=settings.mail_timeout_seconds,
+        )
+
+    with smtp_client as client:
+        client.ehlo()
+        if settings.mail_tls and not settings.mail_ssl:
+            client.starttls(context=ssl.create_default_context())
+            client.ehlo()
+        client.login(username, password)
+        client.send_message(message, from_addr=sender_email, to_addrs=[to_email])
+
     return {
         "status": "success",
-        "code": response.status_code,
+        "code": 250,
     }

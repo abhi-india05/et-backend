@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from pymongo.collection import Collection
 
 from backend.config.settings import settings
-from backend.email_service import send_email as sendgrid_send_email
+from backend.email_service import send_email as smtp_send_email
 from backend.db.mongo import get_sync_database
 from backend.utils.helpers import generate_id, now_iso
 from backend.utils.logger import get_logger
@@ -21,14 +21,11 @@ def _get_emails_col() -> Collection:
 class EmailClient:
     def __init__(self):
         self.transport = settings.email_transport
-        self.is_mock = self.transport == "mock"
-        if self.is_mock:
-            logger.info("Email client initialized (mock mode)")
-            return
-
         logger.info(
-            "SendGrid email client initialized (live mode)",
-            sender_email=settings.sender_email,
+            "SMTP email client initialized (live mode)",
+            mail_server=settings.mail_server,
+            mail_port=settings.mail_port,
+            sender_email=settings.resolved_mail_from,
         )
 
     def _build_html_fallback(self, body_text: str) -> str:
@@ -36,7 +33,7 @@ class EmailClient:
         escaped = escaped.replace("\r\n", "\n").replace("\r", "\n")
         return "<p>" + escaped.replace("\n", "<br>") + "</p>"
 
-    def _send_via_sendgrid(
+    def _send_via_smtp(
         self,
         *,
         to_email: str,
@@ -47,7 +44,7 @@ class EmailClient:
         from_email: Optional[str],
         from_name: str,
     ) -> Dict[str, Any]:
-        return sendgrid_send_email(
+        return smtp_send_email(
             to_email=to_email,
             to_name=to_name or None,
             subject=subject,
@@ -73,7 +70,9 @@ class EmailClient:
         if not user_id:
             raise ValueError("user_id is required")
 
-        effective_from_email = (from_email or settings.sender_email or "").strip() or "sales@revops-ai.com"
+        effective_from_email = (from_email or settings.resolved_mail_from or settings.mail_username or "").strip()
+        if not effective_from_email:
+            raise RuntimeError("MAIL_FROM (or SENDER_EMAIL) must be configured before sending email")
 
         email_record = {
             "user_id": user_id,
@@ -92,20 +91,8 @@ class EmailClient:
             "transport": self.transport,
         }
 
-        if self.is_mock:
-            email_record["status"] = "sent_mock"
-            email_record["mock_message_id"] = generate_id("msg")
-            _get_emails_col().insert_one(email_record.copy())
-            logger.info("Mock email sent", to=to_email, subject=subject, sequence_step=sequence_step, user_id=user_id)
-            return {
-                "success": True,
-                "email_id": email_record["email_id"],
-                "status": "sent_mock",
-                "message": f"Mock email sent to {to_email}",
-            }
-
         try:
-            send_result = self._send_via_sendgrid(
+            send_result = self._send_via_smtp(
                 to_email=to_email,
                 to_name=to_name,
                 subject=subject,
@@ -200,7 +187,7 @@ def get_email_stats(user_id: str) -> Dict[str, Any]:
         
     col = _get_emails_col()
     total = col.count_documents({"user_id": user_id})
-    sent = col.count_documents({"user_id": user_id, "status": {"$in": ["sent", "sent_mock"]}})
+    sent = col.count_documents({"user_id": user_id, "status": "sent"})
     failed = col.count_documents({"user_id": user_id, "status": "failed"})
     
     return {

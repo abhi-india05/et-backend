@@ -105,7 +105,8 @@ async def lifespan(_app: FastAPI):
         "revops_ai_startup",
         environment=settings.environment,
         has_gemini_key=settings.has_gemini_key,
-        mock_email=settings.is_mock_email,
+        email_transport=settings.email_transport,
+        smtp_server=settings.mail_server,
     )
     await _initialize_runtime()
     yield

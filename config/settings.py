@@ -48,7 +48,16 @@ class Settings(BaseSettings):
         alias="MONGO_SOCKET_TIMEOUT_MS",
     )
 
-    sendgrid_api_key: str = Field(default="", alias="SENDGRID_API_KEY")
+    mail_username: str = Field(default="", alias="MAIL_USERNAME")
+    mail_password: str = Field(default="", alias="MAIL_PASSWORD")
+    mail_from: str = Field(default="", alias="MAIL_FROM")
+    mail_from_name: str = Field(default="RevOps AI", alias="MAIL_FROM_NAME")
+    mail_server: str = Field(default="smtp.gmail.com", alias="MAIL_SERVER")
+    mail_port: int = Field(default=587, ge=1, le=65535, alias="MAIL_PORT")
+    mail_tls: bool = Field(default=True, alias="MAIL_TLS")
+    mail_ssl: bool = Field(default=False, alias="MAIL_SSL")
+    mail_timeout_seconds: int = Field(default=30, ge=3, le=120, alias="MAIL_TIMEOUT_SECONDS")
+    # Backward-compatible sender alias for older environments.
     sender_email: Optional[str] = Field(default=None, alias="SENDER_EMAIL")
     environment: str = Field(default="development", alias="ENVIRONMENT")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
@@ -153,6 +162,16 @@ class Settings(BaseSettings):
     def _normalize_cors_origin_regex(cls, value: str) -> str:
         return (value or "").strip()
 
+    @field_validator("mail_server")
+    @classmethod
+    def _normalize_mail_server(cls, value: str) -> str:
+        return (value or "").strip()
+
+    @field_validator("mail_from")
+    @classmethod
+    def _normalize_mail_from(cls, value: str) -> str:
+        return (value or "").strip()
+
     @field_validator("auth_cookie_samesite")
     @classmethod
     def _normalize_auth_cookie_samesite(cls, value: str) -> str:
@@ -215,20 +234,23 @@ class Settings(BaseSettings):
         return regex or r"^https://.*\.vercel\.app$"
 
     @property
-    def has_sendgrid_credentials(self) -> bool:
-        api_key = (self.sendgrid_api_key or "").strip()
-        sender = (self.sender_email or "").strip()
-        if not (api_key and sender):
+    def resolved_mail_from(self) -> str:
+        return (self.mail_from or self.sender_email or "").strip()
+
+    @property
+    def has_smtp_credentials(self) -> bool:
+        username = (self.mail_username or "").strip()
+        password = (self.mail_password or "").strip()
+        sender = self.resolved_mail_from
+        if not (username and password and sender):
             return False
-        placeholders = ("your_", "example.com", "changeme", "dummy", "placeholder")
-        joined = " ".join([api_key, sender]).lower()
+        placeholders = ("your_", "example.com", "changeme", "dummy", "placeholder", "<user>", "<password>")
+        joined = " ".join([username, password, sender]).lower()
         return not any(marker in joined for marker in placeholders)
 
     @property
     def email_transport(self) -> str:
-        if self.has_sendgrid_credentials:
-            return "sendgrid"
-        return "mock"
+        return "smtp"
 
     @property
     def gemini_api_key_list(self) -> List[str]:
@@ -278,10 +300,6 @@ class Settings(BaseSettings):
         )
 
     @property
-    def is_mock_email(self) -> bool:
-        return not self.has_sendgrid_credentials
-
-    @property
     def resolved_auth_cookie_secure(self) -> bool:
         if self.auth_cookie_secure is not None:
             return bool(self.auth_cookie_secure)
@@ -322,8 +340,12 @@ class Settings(BaseSettings):
                 problems.append("CORS_ORIGINS or CORS_ORIGIN_REGEX must be configured in production.")
             if not self.resolved_auth_cookie_secure:
                 problems.append("AUTH_COOKIE_SECURE must resolve to true in production.")
-            if not self.has_sendgrid_credentials:
-                problems.append("SENDGRID_API_KEY and SENDER_EMAIL must be configured in production for SendGrid email.")
+            if self.mail_tls and self.mail_ssl:
+                problems.append("MAIL_TLS and MAIL_SSL cannot both be true.")
+            if not self.mail_server.strip():
+                problems.append("MAIL_SERVER must be configured in production.")
+            if not self.has_smtp_credentials:
+                problems.append("MAIL_USERNAME, MAIL_PASSWORD, and MAIL_FROM (or SENDER_EMAIL) must be configured in production for SMTP email.")
         if problems:
             raise RuntimeError("Invalid configuration:\n- " + "\n- ".join(problems))
 
