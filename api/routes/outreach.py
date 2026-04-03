@@ -36,6 +36,13 @@ class RefineEmailLLMResponse(StrictBaseModel):
     explanation: str = ""
 
 
+DEFAULT_POINTWISE_REFINEMENT_PROMPT = (
+    "Rewrite the provided email in a formal, pointwise manner. "
+    "Preserve every factual detail from the original email, do not add new information, "
+    "do not ask for any extra input, and keep the tone professional and concise."
+)
+
+
 def _terminal_log(level: str, message: str) -> None:
     print(f"[BACKEND][outreach_routes][{level.upper()}] {message}")
 
@@ -366,6 +373,7 @@ async def refine_email(
 ) -> Dict[str, Any]:
     lead_context = payload.lead_context if isinstance(payload.lead_context, dict) else {}
     insights = payload.insights if isinstance(payload.insights, dict) else {}
+    user_prompt = payload.prompt.strip() if isinstance(payload.prompt, str) and payload.prompt.strip() else DEFAULT_POINTWISE_REFINEMENT_PROMPT
 
     try:
         prompt = (
@@ -373,7 +381,7 @@ async def refine_email(
             "not regenerate from scratch. Keep factual grounding limited to the provided "
             "lead_context and insights. Return only valid JSON.\n\n"
             f"Lead ID: {payload.lead_id}\n"
-            f"User Prompt: {payload.prompt}\n\n"
+            f"User Prompt: {user_prompt}\n\n"
             f"Original Email:\n{payload.original_email}\n\n"
             f"Lead Context (JSON): {json.dumps(lead_context, ensure_ascii=True)}\n"
             f"Insights (JSON): {json.dumps(insights, ensure_ascii=True)}\n\n"
@@ -395,7 +403,11 @@ async def refine_email(
             agent_name="outreach_refiner",
             action="refine_email",
             input_summary=f"Refine email for lead {payload.lead_id}",
-            output_summary="Refined outreach email with user prompt and twin context",
+            output_summary=(
+                "Refined outreach email with user prompt and twin context"
+                if payload.prompt and payload.prompt.strip()
+                else "Refined outreach email with default pointwise formatting guidance"
+            ),
             status="success",
             reasoning=explanation,
             confidence=0.84,

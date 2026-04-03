@@ -336,7 +336,7 @@ class SingleLeadSendRequest(StrictBaseModel):
 class RefineEmailRequest(StrictBaseModel):
     lead_id: str
     original_email: str
-    prompt: str
+    prompt: Optional[str] = None
     lead_context: Dict[str, Any] = Field(default_factory=dict)
     insights: Dict[str, Any] = Field(default_factory=dict)
 
@@ -358,11 +358,11 @@ class RefineEmailRequest(StrictBaseModel):
 
     @field_validator("prompt")
     @classmethod
-    def _prompt(cls, value: str) -> str:
+    def _prompt(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
         cleaned = sanitize_text(value, max_len=2000)
-        if not cleaned:
-            raise ValueError("prompt is required")
-        return cleaned
+        return cleaned or None
 
 
 class ReviewedEmail(StrictBaseModel):
